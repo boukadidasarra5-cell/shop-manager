@@ -7,7 +7,14 @@ class Client:
         self.name = self._choose_name()
         self.request = random.choice([
             "burger-cheese",
+            "burger-double",
+            "burger-cheese-double",
             "cookie-chocolate",
+            "chinese",
+            "corn-dog",
+            "fries",
+            "maki-vegetable",
+            "pizza",
             "cup-tea",
             "cup-coffee",
             "donut",
@@ -18,6 +25,9 @@ class Client:
             "sundae"
         ])
 
+        # 🌸 Ajout essentiel pour la barre d’humeur
+        self.patience = 100
+
     def _choose_image(self):
         folder = "images/clients"
         images = [f for f in os.listdir(folder) if f.endswith(".png")]
@@ -25,8 +35,8 @@ class Client:
         return os.path.join(folder, self.chosen_image)
 
     def _choose_name(self):
-        female_names = ["Alice", "Emma", "Lina", "Sofia", "Maya"]
-        male_names = ["Adam", "Leo", "Yanis", "Noah", "Elias"]
+        female_names = ["Alice", "Emna", "Lina", "Sofia", "Maya","Mouna"]
+        male_names = ["Adam", "Leo", "Yanis", "Sami", "Elias", "Macron"]
 
         if "female" in self.chosen_image:
             return random.choice(female_names)
