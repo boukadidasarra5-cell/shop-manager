@@ -1,5 +1,6 @@
 import pygame
 import sys
+import json
 from test_client import Client
 
 pygame.init()
@@ -10,32 +11,68 @@ pygame.display.set_caption("Mini Jeu de Magasin")
 
 font = pygame.font.SysFont("georgia", 20)
 
-# UI 
+def save_game(score, money, upgrades):
+    data = {
+        "score": score,
+        "money": money,
+        "upgrades": upgrades
+    }
+    with open("save.json", "w") as f:
+        json.dump(data, f)
+
+def load_game():
+    try:
+        with open("save.json", "r") as f:
+            data = json.load(f)
+            return data["score"], data["money"], data["upgrades"]
+    except:
+        return 0, 0, {
+            "stock": {"price": 20, "level": 0},
+            "decor": {"price": 30, "level": 0},
+            "fridge": {"price": 40, "level": 0},
+            "employee": {"price": 60, "level": 0}
+        }
+def draw_tutorial():
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 180))
+    screen.blit(overlay, (0, 0))
+
+    lines = [
+        "Welcome to Cozy Café !",
+        "",
+        "- Regarde les commandes des clients",
+        "- Ouvre le menu des objets pour choisir un item",
+        "- Glisse l'item sur le client pour le servir",
+        "- Améliore ton café dans le shop",
+        "",
+        "Clique n'importe où pour commencer !"
+    ]
+
+    y = 120
+    for line in lines:
+        txt = font.render(line, True, (255, 255, 255))
+        screen.blit(txt, (WIDTH//2 - txt.get_width()//2, y))
+        y += 40
+
 
 def draw_request_bubble(request_list, x, y, item_images):
     if not request_list:
         return
-
     spacing = 45
     bubble_w = 20 + len(request_list) * spacing
     bubble_h = 55
-
     bubble = pygame.Surface((bubble_w, bubble_h), pygame.SRCALPHA)
     pygame.draw.rect(bubble, (255, 240, 250, 220), (0, 0, bubble_w, bubble_h), border_radius=18)
-
     for i, item in enumerate(request_list):
         if item in item_images:
             img = pygame.transform.scale(item_images[item], (40, 40))
             bubble.blit(img, (10 + i * spacing, 7))
-
     screen.blit(bubble, (x, y))
-
 
 def draw_header(score, money):
     block_w = 160
     block_h = 45
     y = 10
-
     pastel_shop = (245, 225, 255, 230)
     pastel_score = (225, 245, 255, 230)
     pastel_money = (255, 240, 220, 230)
@@ -65,9 +102,20 @@ def draw_header(score, money):
                                   block_h//2 - money_text.get_height()//2))
     screen.blit(money_block, (x3, y))
 
-    return shop_rect
+    pause_w, pause_h = 100, 40
+    pause_x = WIDTH//2 - 50
+    pause_y = 60
 
+    pause_block = pygame.Surface((pause_w, pause_h), pygame.SRCALPHA)
+    pygame.draw.rect(pause_block, (230, 230, 255, 230), (0, 0, pause_w, pause_h), border_radius=16)
+    pause_text = font.render("Pause", True, (60, 60, 90))
+    pause_block.blit(pause_text, (pause_w//2 - pause_text.get_width()//2,
+                                  pause_h//2 - pause_text.get_height()//2))
+    screen.blit(pause_block, (pause_x, pause_y))
 
+    pause_rect = pygame.Rect(pause_x, pause_y, pause_w, pause_h)
+
+    return shop_rect, pause_rect
 def draw_items_button():
     w, h = 130, 40
     x, y = WIDTH//2 - w//2, HEIGHT - 200
@@ -79,53 +127,40 @@ def draw_items_button():
     screen.blit(btn, (x, y))
     return pygame.Rect(x, y, w, h)
 
-
 def draw_items_dropdown(item_images, mouse_pos, scroll_offset):
     w, h = 700, 400
     x = (WIDTH - w) // 2
     y = HEIGHT - 260
     bg = (180, 240, 200, 230)
-
     box = pygame.Surface((w, h), pygame.SRCALPHA)
     pygame.draw.rect(box, bg, (0, 0, w, h), border_radius=30)
-
     col = 0
     row = 0
     item_rects = {}
-
     for item, img in item_images.items():
         px = x + 40 + col * 120
         py = y + 20 + row * 110 + scroll_offset
-
         rect = img.get_rect(topleft=(px, py))
         hover = rect.collidepoint(mouse_pos)
-
         if hover:
             pygame.draw.circle(box, (200, 255, 220), (px - x + 35, py - y + 35), 45)
-
         box.blit(img, (px - x, py - y))
         item_rects[item] = rect
-
         col += 1
         if col == 5:
             col = 0
             row += 1
-
     screen.blit(box, (x, y))
     return pygame.Rect(x, y, w, h), item_rects
-
 
 def draw_shop_menu(upgrades, money):
     w, h = 400, 300
     x = (WIDTH - w) // 2
     y = (HEIGHT - h) // 2
-
     box = pygame.Surface((w, h), pygame.SRCALPHA)
     pygame.draw.rect(box, (255, 230, 240, 230), (0, 0, w, h), border_radius=20)
-
     title = font.render("Boutique d'améliorations", True, (120, 60, 80))
     box.blit(title, (60, 20))
-
     y_offset = 80
     for name, data in upgrades.items():
         label = {"stock": "Stock", "decor": "Décor", "fridge": "Frigo", "employee": "Employé"}[name]
@@ -133,10 +168,8 @@ def draw_shop_menu(upgrades, money):
         txt = font.render(text, True, (80, 40, 40))
         box.blit(txt, (40, y_offset))
         y_offset += 50
-
     money_txt = font.render(f"Argent : {money}€", True, (80, 40, 40))
     box.blit(money_txt, (40, h - 50))
-
     screen.blit(box, (x, y))
     return pygame.Rect(x, y, w, h)
 
@@ -146,7 +179,6 @@ def load_item_images():
         "hot-dog", "fries", "pizza", "corn-dog", "cup-tea", "cup-coffee", "sundae", "soda",
         "cookie-chocolate", "donut", "ice-cream", "croissant"
     ]
-
     images = {}
     for item in items:
         img = pygame.image.load(f"images/items/{item}.png").convert_alpha()
@@ -154,21 +186,15 @@ def load_item_images():
         images[item] = img
     return images
 
-
 def draw_patience_bar(value, x, y):
     bg = pygame.Surface((160, 22), pygame.SRCALPHA)
     pygame.draw.rect(bg, (255, 220, 230, 220), (0, 0, 160, 22), border_radius=12)
-
     width = int(150 * (value / 100))
     color = (255, 120, 150) if value > 40 else (255, 80, 80)
-
     pygame.draw.rect(bg, color, (5, 5, width, 12), border_radius=10)
-
     heart = font.render("♡", True, (255, 100, 140))
     bg.blit(heart, (135, 2))
-
     screen.blit(bg, (x, y))
-
 
 def buy_upgrade(name, upgrades, money):
     upgrade = upgrades[name]
@@ -179,13 +205,11 @@ def buy_upgrade(name, upgrades, money):
         return money, True
     return money, False
 
-
 def spawn_client(upgrades):
     client = Client()
     client.patience = min(100, client.patience + upgrades["decor"]["level"] * 5)
     img = pygame.transform.scale(pygame.image.load(client.image), (230, 320))
     return client, img
-
 
 def draw_drag_bubble(item_img, mouse_pos):
     size = 80
@@ -195,30 +219,22 @@ def draw_drag_bubble(item_img, mouse_pos):
     bubble.blit(img, (size//2 - 25, size//2 - 25))
     screen.blit(bubble, (mouse_pos[0] - size//2, mouse_pos[1] - size//2))
 
-# MAIN LOOP
-
 def main():
-    score = 0
-    money = 0
+    score, money, upgrades = load_game()
+
     items_open = False
     shop_open = False
     scroll_offset = 0
     result_message = ""
     feedback_timer = 0
-
     shop_message = ""
     shop_message_timer = 0
-
     dragging_item = False
     dragged_item_name = None
     dragged_item_img = None
 
-    upgrades = {
-        "stock": {"price": 20, "level": 0},
-        "decor": {"price": 30, "level": 0},
-        "fridge": {"price": 40, "level": 0},
-        "employee": {"price": 60, "level": 0}
-    }
+    paused = False
+    show_tutorial = True
 
     auto_timer = pygame.time.get_ticks()
 
@@ -247,14 +263,41 @@ def main():
         mouse_pos = pygame.mouse.get_pos()
         screen.blit(background, (0, 0))
 
-        shop_rect = draw_header(score, money)
+        if show_tutorial:
+            draw_tutorial()
+            pygame.display.flip()
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    show_tutorial = False
+            continue
+
+        shop_rect, pause_rect = draw_header(score, money)
+
+        if paused:
+            pause_overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            pause_overlay.fill((0, 0, 0, 120))
+            screen.blit(pause_overlay, (0, 0))
+
+            pause_text = font.render("PAUSE", True, (255, 255, 255))
+            screen.blit(pause_text, (WIDTH//2 - pause_text.get_width()//2,
+                                     HEIGHT//2 - pause_text.get_height()//2))
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    save_game(score, money, upgrades)
+                    running = False
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if pause_rect.collidepoint(event.pos):
+                        paused = False
+            continue
 
         base_decay = 0.05
         decay_bonus = 0.01 * upgrades["fridge"]["level"]
         decay = max(0.01, base_decay - decay_bonus)
 
         now = pygame.time.get_ticks()
-
         client_rects = []
 
         for i, client in enumerate(clients):
@@ -271,7 +314,6 @@ def main():
             screen.blit(img, (x, y))
             rect = pygame.Rect(x, y, img.get_width(), img.get_height())
             client_rects.append(rect)
-
             draw_patience_bar(client.patience, x + 20, y - 30)
             draw_request_bubble(client.request, x + 40, y - 70, item_images)
 
@@ -313,6 +355,7 @@ def main():
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                save_game(score, money, upgrades)
                 running = False
 
             if event.type == pygame.MOUSEWHEEL and items_open and not dragging_item:
@@ -321,6 +364,10 @@ def main():
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
+
+                if pause_rect.collidepoint(pos):
+                    paused = True
+                    continue
 
                 if btn_rect.collidepoint(pos) and not shop_open and not dragging_item:
                     items_open = not items_open
@@ -364,7 +411,6 @@ def main():
                             items_open = False
                             scroll_offset = 0
                             break
-
             if event.type == pygame.MOUSEBUTTONUP:
                 if dragging_item:
                     pos = pygame.mouse.get_pos()
@@ -401,6 +447,7 @@ def main():
                     dragged_item_img = None
                     items_open = False
 
+        #  FEEDBACK 
         if result_message:
             if pygame.time.get_ticks() - feedback_timer > 900:
                 result_message = ""
@@ -419,7 +466,6 @@ def main():
 
     pygame.quit()
     sys.exit()
-
 
 if __name__ == "__main__":
     main()

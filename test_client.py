@@ -27,16 +27,16 @@ class Client:
             "sundae"
         ]
 
-        # 🌟 RANDOM : 70% de chance d’un seul item, 30% d’un menu
+    
         if random.random() < 0.7:
-            # Un seul item
+        
             self.request = [random.choice(possible_items)]
         else:
-            # Un menu de 2 à 3 items
+    
             count = random.randint(2, 3)
             self.request = random.sample(possible_items, count)
 
-        # 🌸 Patience
+    
         self.patience = 100
 
     def _choose_image(self):
